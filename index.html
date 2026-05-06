@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Budget</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0e0f11; --surface: #16181c; --surface2: #1e2126; --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12); --text: #f0ede8; --muted: #7a7d85; --accent: #c8f064;
+    --accent-dim: rgba(200,240,100,0.12); --red: #ff6b6b; --amber: #ffb547; --blue: #64b5f6;
+    --font-display: 'DM Serif Display', Georgia, serif; --font-body: 'DM Sans', sans-serif;
+    --radius: 14px; --radius-sm: 8px;
+  }
+  body { background: var(--bg); color: var(--text); font-family: var(--font-body); font-size: 14px; }
+  .app { max-width: 700px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+  .header { margin-bottom: 1.5rem; }
+  .header h1 { font-family: var(--font-display); font-size: 28px; font-weight: 400; letter-spacing: -0.02em; }
+  .header h1 em { font-style: italic; color: var(--accent); }
+  .header-sub { display: flex; justify-content: space-between; align-items: center; margin-top: 4px; }
+  .header-sub p { font-size: 13px; color: var(--muted); }
+  .period-badge { font-size: 11px; background: var(--surface); border: 1px solid var(--border2); border-radius: 20px; padding: 3px 10px; color: var(--accent); }
+
+  .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 1.25rem; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.1rem; }
+  .card-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 6px; }
+  .card-value { font-family: var(--font-display); font-size: 22px; }
+  .card-value.green { color: var(--accent); } .card-value.red { color: var(--red); } .card-value.amber { color: var(--amber); }
+  .card-sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+  .progress-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.25rem; margin-bottom: 1.25rem; }
+  .progress-label { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+  .progress-track { height: 6px; background: var(--surface2); border-radius: 999px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 999px; transition: width 0.5s ease; }
+
+  .tabs { display: flex; gap: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 4px; margin-bottom: 1.25rem; }
+  .tab { flex: 1; padding: 7px 0; text-align: center; font-size: 12px; font-weight: 500; color: var(--muted); border-radius: 6px; cursor: pointer; transition: all 0.18s; border: none; background: transparent; font-family: var(--font-body); }
+  .tab.active { background: var(--surface2); color: var(--text); border: 1px solid var(--border2); }
+  .tab:hover:not(.active) { color: var(--text); }
+
+  .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
+  .section-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+  .add-btn { font-size: 12px; font-weight: 600; color: var(--accent); background: var(--accent-dim); border: 1px solid rgba(200,240,100,0.2); border-radius: var(--radius-sm); padding: 5px 12px; cursor: pointer; font-family: var(--font-body); }
+  .add-btn:hover { background: rgba(200,240,100,0.2); }
+
+  .items-list { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 1.5rem; }
+  .item-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--border); transition: background 0.12s; }
+  .item-row:last-child { border-bottom: none; }
+  .item-row:hover { background: var(--surface2); }
+  .item-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .item-name { flex: 1; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .item-tag { font-size: 10px; padding: 2px 7px; border-radius: 20px; color: var(--muted); background: var(--surface2); margin-left: 6px; flex-shrink: 0; }
+  .item-date { font-size: 11px; color: var(--muted); white-space: nowrap; flex-shrink: 0; }
+  .item-amount { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; min-width: 72px; text-align: right; flex-shrink: 0; }
+  .item-amount.out { color: var(--red); } .item-amount.in { color: var(--accent); } .item-amount.spend { color: var(--amber); }
+  .item-edit { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 16px; padding: 2px 4px; line-height: 1; flex-shrink: 0; }
+  .item-edit:hover { color: var(--text); }
+  .item-del { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 14px; padding: 2px 4px; line-height: 1; flex-shrink: 0; }
+  .item-del:hover { color: var(--red); }
+  .empty-state { padding: 2rem; text-align: center; color: var(--muted); font-size: 13px; }
+  .empty-state span { display: block; font-size: 28px; margin-bottom: 8px; }
+
+  /* Period nav */
+  .period-nav { display: flex; align-items: center; gap: 8px; margin-bottom: 1.25rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 12px; }
+  .period-nav-btn { background: none; border: 1px solid var(--border2); border-radius: var(--radius-sm); padding: 4px 10px; color: var(--muted); cursor: pointer; font-size: 16px; line-height: 1; }
+  .period-nav-btn:hover { color: var(--text); }
+  .period-nav-label { flex: 1; text-align: center; font-size: 13px; font-weight: 500; }
+  .period-nav-sub { font-size: 10px; color: var(--muted); text-align: center; margin-top: 1px; }
+
+  /* Savings banner */
+  .savings-banner { background: var(--surface); border: 1px solid rgba(200,240,100,0.25); border-radius: var(--radius); padding: 1rem 1.25rem; margin-bottom: 1.25rem; }
+  .savings-banner-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+  .savings-banner-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 3px; }
+  .savings-banner-sub { font-size: 12px; color: var(--muted); }
+  .savings-banner-amount { font-family: var(--font-display); font-size: 24px; }
+  .savings-progress-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+  .savings-stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-top: 12px; }
+  .savings-stat { text-align: center; }
+  .savings-stat-val { font-family: var(--font-display); font-size: 18px; }
+  .savings-stat-label { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+  /* Budget cat cards */
+  .budget-cats-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 10px; margin-bottom: 1.25rem; }
+  .budget-cat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; }
+  .budget-cat-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .budget-cat-name { font-size: 13px; font-weight: 500; }
+  .budget-cat-amounts { font-size: 12px; color: var(--muted); }
+  .budget-cat-amounts strong { font-weight: 600; }
+  .budget-cat-track { height: 5px; background: var(--surface2); border-radius: 999px; overflow: hidden; }
+  .budget-cat-fill { height: 100%; border-radius: 999px; transition: width 0.4s ease; }
+  .budget-cat-remaining { font-size: 11px; margin-top: 5px; }
+  .budget-cat-remaining.ok { color: var(--accent); }
+  .budget-cat-remaining.warn { color: var(--amber); }
+  .budget-cat-remaining.over { color: var(--red); }
+
+  .cat-breakdown { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 1.5rem; }
+  .cat-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  .cat-row:last-child { border-bottom: none; }
+  .cat-name { flex: 1; font-size: 13px; }
+  .cat-bar-wrap { width: 80px; height: 4px; background: var(--surface2); border-radius: 999px; overflow: hidden; }
+  .cat-bar { height: 100%; border-radius: 999px; }
+  .cat-amount { font-size: 13px; font-weight: 600; min-width: 64px; text-align: right; color: var(--red); }
+  .cat-pct { font-size: 11px; color: var(--muted); min-width: 34px; text-align: right; }
+
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 100; backdrop-filter: blur(3px); }
+  .modal { background: var(--surface); border: 1px solid var(--border2); border-radius: var(--radius); padding: 1.5rem; width: 320px; max-width: 95vw; }
+  .modal h3 { font-family: var(--font-display); font-size: 20px; font-weight: 400; margin-bottom: 1.25rem; }
+  .modal label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); margin-bottom: 5px; }
+  .modal input, .modal select { width: 100%; background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius-sm); padding: 9px 12px; font-size: 14px; color: var(--text); font-family: var(--font-body); margin-bottom: 1rem; outline: none; transition: border-color 0.15s; }
+  .modal input:focus, .modal select:focus { border-color: var(--accent); }
+  .modal select option { background: #1e2126; }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 0.5rem; }
+  .btn-cancel { background: none; border: 1px solid var(--border2); border-radius: var(--radius-sm); padding: 8px 16px; color: var(--muted); cursor: pointer; font-family: var(--font-body); font-size: 13px; }
+  .btn-save { background: var(--accent); border: none; border-radius: var(--radius-sm); padding: 8px 18px; color: #0e0f11; font-weight: 600; cursor: pointer; font-family: var(--font-body); font-size: 13px; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <h1>My <em>Budget</em></h1>
+    <div class="header-sub">
+      <p>Tap any item to edit</p>
+      <span class="period-badge" id="current-period-badge">Loading...</span>
+    </div>
+  </div>
+
+  <div class="summary-grid">
+    <div class="card"><div class="card-label">Total in</div><div class="card-value green" id="sum-in">£0</div><div class="card-sub">salary + extras</div></div>
+    <div class="card"><div class="card-label">Outgoings</div><div class="card-value red" id="sum-out">£0</div><div class="card-sub">fixed monthly</div></div>
+    <div class="card"><div class="card-label">Remaining</div><div class="card-value amber" id="sum-rem">£0</div><div class="card-sub" id="sub-rem-pct">of income</div></div>
+  </div>
+
+  <div class="progress-section">
+    <div class="progress-label"><span>Fixed outgoings vs income</span><span id="prog-label">0%</span></div>
+    <div class="progress-track"><div class="progress-fill" id="prog-bar" style="width:0%"></div></div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('outgoings')">Outgoings</button>
+    <button class="tab" onclick="showTab('income')">Paid in</button>
+    <button class="tab" onclick="showTab('spending')">Spending</button>
+    <button class="tab" onclick="showTab('breakdown')">Breakdown</button>
+  </div>
+
+  <!-- OUTGOINGS -->
+  <div id="tab-outgoings">
+    <div class="section-header"><span class="section-title">Monthly outgoings</span><button class="add-btn" onclick="openModal('out')">+ Add</button></div>
+    <div class="items-list" id="list-out"></div>
+  </div>
+
+  <!-- INCOME -->
+  <div id="tab-income" class="hidden">
+    <div class="section-header"><span class="section-title">Money coming in</span><button class="add-btn" onclick="openModal('in')">+ Add</button></div>
+    <div class="items-list" id="list-in"></div>
+  </div>
+
+  <!-- SPENDING -->
+  <div id="tab-spending" class="hidden">
+    <!-- Period navigator -->
+    <div class="period-nav">
+      <button class="period-nav-btn" onclick="changePeriod(-1)">‹</button>
+      <div>
+        <div class="period-nav-label" id="period-nav-label">Loading...</div>
+        <div class="period-nav-sub" id="period-nav-sub"></div>
+      </div>
+      <button class="period-nav-btn" onclick="changePeriod(1)">›</button>
+    </div>
+
+    <!-- Savings banner -->
+    <div class="savings-banner">
+      <div class="savings-banner-top">
+        <div>
+          <div class="savings-banner-label">💰 Savings target</div>
+          <div class="savings-banner-sub" id="savings-sub">£1,000 goal this period</div>
+        </div>
+        <div class="savings-banner-amount" id="savings-projected">£0</div>
+      </div>
+      <div class="savings-progress-label"><span>Projected savings</span><span id="savings-pct">0%</span></div>
+      <div class="progress-track">
+        <div class="progress-fill" id="savings-bar" style="width:0%"></div>
+      </div>
+      <div class="savings-stats">
+        <div class="savings-stat">
+          <div class="savings-stat-val green" id="sv-remaining">£0</div>
+          <div class="savings-stat-label">Budget left</div>
+        </div>
+        <div class="savings-stat">
+          <div class="savings-stat-val amber" id="sv-spent">£0</div>
+          <div class="savings-stat-label">Total spent</div>
+        </div>
+        <div class="savings-stat">
+          <div class="savings-stat-val" style="color:var(--blue)">£1,000</div>
+          <div class="savings-stat-label">Save target</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Budget categories -->
+    <div class="section-header"><span class="section-title">Budget categories</span></div>
+    <div class="budget-cats-grid" id="budget-cats-grid"></div>
+
+    <!-- Transactions -->
+    <div class="section-header"><span class="section-title">Transactions</span><button class="add-btn" onclick="openModal('spend')">+ Add spend</button></div>
+    <div class="items-list" id="list-spend"></div>
+  </div>
+
+  <!-- BREAKDOWN -->
+  <div id="tab-breakdown" class="hidden">
+    <div class="section-header"><span class="section-title">Fixed outgoings by category</span></div>
+    <div class="cat-breakdown" id="cat-list"></div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay hidden" id="modal">
+  <div class="modal">
+    <h3 id="modal-title">Add item</h3>
+    <label>Name</label>
+    <input type="text" id="m-name" placeholder="e.g. Tesco food shop" />
+    <label>Amount (£)</label>
+    <input type="number" id="m-amount" placeholder="0.00" step="0.01" min="0" />
+    <div id="m-cat-wrap">
+      <label>Category</label>
+      <select id="m-cat"></select>
+    </div>
+    <div id="m-date-wrap" class="hidden">
+      <label>Date</label>
+      <input type="date" id="m-date" />
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-save" onclick="saveItem()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── SALARY PAY DATES (period START = day after previous pay, END = pay day) ───
+// Each entry: pay date. Period covers from day-after-prev-pay to this pay date.
+const PAY_DATES = [
+  new Date(2026,0,28),  // 28 Jan 2026
+  new Date(2026,1,25),  // 25 Feb 2026
+  new Date(2026,2,27),  // 27 Mar 2026
+  new Date(2026,3,28),  // 28 Apr 2026
+  new Date(2026,4,27),  // 27 May 2026
+  new Date(2026,5,26),  // 26 Jun 2026
+  new Date(2026,6,29),  // 29 Jul 2026
+  new Date(2026,7,26),  // 26 Aug 2026
+  new Date(2026,8,28),  // 28 Sep 2026
+  new Date(2026,9,28),  // 28 Oct 2026
+  new Date(2026,10,26), // 26 Nov 2026
+  new Date(2026,11,22), // 22 Dec 2026
+  new Date(2027,0,27),  // 27 Jan 2027
+];
+
+// Build periods: [{label, start, end}]
+// Period i: starts day after PAY_DATES[i-1], ends PAY_DATES[i]
+function buildPeriods() {
+  const periods = [];
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  for(let i=0; i<PAY_DATES.length; i++) {
+    const end = PAY_DATES[i];
+    const start = i===0 ? new Date(2025,11,29) : addDays(PAY_DATES[i-1], 1);
+    const label = MONTHS[end.getMonth()] + ' ' + end.getFullYear();
+    const sub = fmtDate(start) + ' – ' + fmtDate(end);
+    periods.push({ label, sub, start, end });
+  }
+  return periods;
+}
+
+function addDays(d, n) { const r = new Date(d); r.setDate(r.getDate()+n); return r; }
+function fmtDate(d) { return d.getDate()+'/'+(d.getMonth()+1)+'/'+d.getFullYear(); }
+
+const PERIODS = buildPeriods();
+
+function currentPeriodIndex() {
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  for(let i=0; i<PERIODS.length; i++) {
+    const s = new Date(PERIODS[i].start); s.setHours(0,0,0,0);
+    const e = new Date(PERIODS[i].end); e.setHours(23,59,59,999);
+    if(today >= s && today <= e) return i;
+  }
+  // Default to last period if beyond all
+  return PERIODS.length - 1;
+}
+
+// ─── CONSTANTS ───
+const SAVINGS_TARGET = 1000;
+const REMAINING_AFTER_BILLS = 1909.47;
+
+const BUDGET_CATS = [
+  { key:'groceries',  label:'Groceries',  emoji:'🛒', budget:230, color:'#aed581' },
+  { key:'eating_out', label:'Eating out', emoji:'🍽', budget:180, color:'#ff8a65' },
+  { key:'transport',  label:'Transport',  emoji:'🚇', budget:180, color:'#4fc3f7' },
+  { key:'misc',       label:'Misc',       emoji:'🗂', budget:290, color:'#ce93d8' },
+];
+
+const CAT_COLORS = {
+  housing:'#64b5f6', utility:'#81c784', insurance:'#ffb547', leisure:'#ce93d8',
+  subscription:'#f48fb1', telecom:'#80cbc4', other:'#90a4ae',
+  groceries:'#aed581', transport:'#4fc3f7', eating_out:'#ff8a65', misc:'#ce93d8'
+};
+
+const OUT_CATS = ['housing','utility','insurance','leisure','subscription','telecom','other'];
+
+// ─── DEFAULT STATE ───
+const DEFAULT_STATE = {
+  outgoings: [
+    {id:1,name:'Mortgage',amount:452.62,cat:'housing'},
+    {id:2,name:'Rent',amount:554.23,cat:'housing'},
+    {id:3,name:'Council tax',amount:154.76,cat:'housing'},
+    {id:4,name:'David Lloyd Gym',amount:382.41,cat:'leisure'},
+    {id:5,name:'Gas / Electricity',amount:89.00,cat:'utility'},
+    {id:6,name:'Water',amount:24.70,cat:'utility'},
+    {id:7,name:'TV Licence',amount:15.00,cat:'utility'},
+    {id:8,name:'Car tax',amount:14.43,cat:'insurance'},
+    {id:9,name:'Mortgage insurance',amount:21.36,cat:'insurance'},
+    {id:10,name:'Mobile insurance',amount:6.15,cat:'insurance'},
+    {id:11,name:'Car insurance',amount:41.23,cat:'insurance'},
+    {id:12,name:'Gymnastics',amount:45.57,cat:'leisure'},
+    {id:13,name:'Mobile bill',amount:35.31,cat:'telecom'},
+    {id:14,name:'Spotify',amount:21.99,cat:'subscription'},
+    {id:15,name:'Martial arts',amount:28.99,cat:'leisure'},
+    {id:16,name:'Netflix',amount:18.99,cat:'subscription'},
+    {id:17,name:'Disney Plus',amount:14.99,cat:'subscription'},
+    {id:18,name:'Pet insurance',amount:40.00,cat:'insurance'},
+    {id:19,name:'Broadband',amount:40.00,cat:'utility'}
+  ],
+  income: [
+    {id:101,name:'Monthly salary',amount:3398.00,cat:'salary'},
+    {id:102,name:'Child maintenance',amount:300.00,cat:'other'},
+    {id:103,name:'Vesna',amount:107.00,cat:'other'},
+    {id:104,name:'Child benefit',amount:106.20,cat:'other'}
+  ],
+  spending: [],
+  nextId: 200
+};
+
+// ─── PERSISTENCE ───
+function loadState() {
+  try {
+    const saved = localStorage.getItem('budgetAppState');
+    if(saved) {
+      const parsed = JSON.parse(saved);
+      // Merge — keep defaults for outgoings/income if not saved, always load spending
+      return {
+        outgoings: parsed.outgoings || DEFAULT_STATE.outgoings,
+        income: parsed.income || DEFAULT_STATE.income,
+        spending: parsed.spending || [],
+        nextId: parsed.nextId || 200
+      };
+    }
+  } catch(e) { console.warn('Failed to load state', e); }
+  return JSON.parse(JSON.stringify(DEFAULT_STATE));
+}
+
+function saveState() {
+  try {
+    localStorage.setItem('budgetAppState', JSON.stringify(state));
+  } catch(e) { console.warn('Failed to save state', e); }
+}
+
+let state = loadState();
+let modalCtx = {mode:null, editId:null, type:null};
+let activeTab = 'outgoings';
+let activePeriodIdx = currentPeriodIndex();
+
+// ─── HELPERS ───
+function fmt(n) { return '£' + Math.abs(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,','); }
+function totalOut() { return state.outgoings.reduce((s,i)=>s+i.amount,0); }
+function totalIn() { return state.income.reduce((s,i)=>s+i.amount,0); }
+
+function dateInPeriod(dateStr, periodIdx) {
+  const d = new Date(dateStr);
+  d.setHours(12,0,0,0);
+  const p = PERIODS[periodIdx];
+  const s = new Date(p.start); s.setHours(0,0,0,0);
+  const e = new Date(p.end); e.setHours(23,59,59,999);
+  return d >= s && d <= e;
+}
+
+function spendingInPeriod(periodIdx) {
+  return state.spending.filter(i => dateInPeriod(i.date, periodIdx));
+}
+
+// ─── RENDER ───
+function render() {
+  const out = totalOut(), ins = totalIn(), rem = ins - out;
+  const pct = ins>0 ? Math.min(100,Math.round(out/ins*100)) : 0;
+
+  document.getElementById('sum-in').textContent = fmt(ins);
+  document.getElementById('sum-out').textContent = fmt(out);
+  document.getElementById('sum-rem').textContent = fmt(rem);
+  document.getElementById('sub-rem-pct').textContent = Math.round((rem/ins)*100)+'% left over';
+  document.getElementById('prog-label').textContent = pct+'%';
+  const bar = document.getElementById('prog-bar');
+  bar.style.width = pct+'%';
+  bar.style.background = pct>80?'var(--red)':pct>60?'var(--amber)':'var(--accent)';
+
+  const cp = PERIODS[activePeriodIdx];
+  document.getElementById('current-period-badge').textContent = cp.label;
+
+  renderList('list-out', state.outgoings, 'out');
+  renderList('list-in', state.income, 'in');
+  renderSpendingTab();
+  renderBreakdown();
+}
+
+function renderList(id, items, type) {
+  const el = document.getElementById(id);
+  if(!items.length) { el.innerHTML = '<div class="empty-state"><span>📭</span>Nothing here yet</div>'; return; }
+  el.innerHTML = items.map(item=>`
+    <div class="item-row">
+      <div class="item-dot" style="background:${CAT_COLORS[item.cat]||'#90a4ae'}"></div>
+      <span class="item-name">${item.name}<span class="item-tag">${item.cat}</span></span>
+      <span class="item-amount ${type}">${type==='out'?'−':'+'}${fmt(item.amount)}</span>
+      <button class="item-edit" onclick="openEdit('${type}',${item.id})">✎</button>
+      <button class="item-del" onclick="delItem('${type}',${item.id})">×</button>
+    </div>`).join('');
+}
+
+function renderSpendingTab() {
+  const p = PERIODS[activePeriodIdx];
+  document.getElementById('period-nav-label').textContent = p.label + ' pay period';
+  document.getElementById('period-nav-sub').textContent = p.sub;
+
+  const items = spendingInPeriod(activePeriodIdx);
+  const totalSpent = items.reduce((s,i)=>s+i.amount, 0);
+
+  const catSpend = {};
+  BUDGET_CATS.forEach(c => { catSpend[c.key] = 0; });
+  items.forEach(i => { if(catSpend[i.cat] !== undefined) catSpend[i.cat] += i.amount; });
+
+  const totalBudgeted = BUDGET_CATS.reduce((s,c)=>s+c.budget,0); // 880
+  const projectedSavings = REMAINING_AFTER_BILLS - totalSpent;
+  const savingsPct = Math.min(100, Math.round(projectedSavings / SAVINGS_TARGET * 100));
+  const remainingBudget = totalBudgeted - totalSpent;
+
+  // Savings banner
+  const projEl = document.getElementById('savings-projected');
+  projEl.textContent = fmt(projectedSavings);
+  projEl.style.color = projectedSavings >= SAVINGS_TARGET ? 'var(--accent)' : projectedSavings > 500 ? 'var(--amber)' : 'var(--red)';
+
+  document.getElementById('savings-sub').textContent = projectedSavings >= SAVINGS_TARGET
+    ? `🎉 On track! £${(projectedSavings - SAVINGS_TARGET).toFixed(2)} over target`
+    : `£${Math.abs(projectedSavings - SAVINGS_TARGET).toFixed(2)} below £1,000 target`;
+
+  document.getElementById('savings-pct').textContent = Math.max(0, savingsPct)+'%';
+  const sbar = document.getElementById('savings-bar');
+  sbar.style.width = Math.max(0, savingsPct)+'%';
+  sbar.style.background = projectedSavings >= SAVINGS_TARGET ? 'var(--accent)' : projectedSavings > 500 ? 'var(--amber)' : 'var(--red)';
+
+  const svRem = document.getElementById('sv-remaining');
+  svRem.textContent = fmt(Math.max(0, remainingBudget));
+  svRem.style.color = remainingBudget < 0 ? 'var(--red)' : 'var(--accent)';
+  document.getElementById('sv-spent').textContent = fmt(totalSpent);
+
+  // Budget category cards
+  document.getElementById('budget-cats-grid').innerHTML = BUDGET_CATS.map(c => {
+    const spent = catSpend[c.key] || 0;
+    const left = c.budget - spent;
+    const pct = Math.min(100, Math.round(spent / c.budget * 100));
+    const fillColor = pct >= 100 ? 'var(--red)' : pct >= 75 ? 'var(--amber)' : c.color;
+    const cls = left < 0 ? 'over' : left < c.budget * 0.25 ? 'warn' : 'ok';
+    const remainText = left < 0
+      ? `£${Math.abs(left).toFixed(2)} over budget`
+      : `£${left.toFixed(2)} remaining`;
+    return `<div class="budget-cat-card">
+      <div class="budget-cat-top">
+        <div class="budget-cat-name">${c.emoji} ${c.label}</div>
+        <div class="budget-cat-amounts"><strong style="color:${c.color}">${fmt(spent)}</strong> / ${fmt(c.budget)}</div>
+      </div>
+      <div class="budget-cat-track">
+        <div class="budget-cat-fill" style="width:${pct}%;background:${fillColor}"></div>
+      </div>
+      <div class="budget-cat-remaining ${cls}">${remainText}</div>
+    </div>`;
+  }).join('');
+
+  // Transactions
+  const el = document.getElementById('list-spend');
+  if(!items.length) {
+    el.innerHTML = '<div class="empty-state"><span>🛒</span>No spending logged yet — hit "+ Add spend" to start</div>';
+    return;
+  }
+  const sorted = [...items].sort((a,b)=>new Date(b.date)-new Date(a.date));
+  const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  el.innerHTML = sorted.map(item => {
+    const d = new Date(item.date);
+    const bc = BUDGET_CATS.find(c=>c.key===item.cat);
+    return `<div class="item-row">
+      <div class="item-dot" style="background:${bc?bc.color:'#90a4ae'}"></div>
+      <span class="item-name">${item.name}<span class="item-tag">${bc?bc.emoji+' '+bc.label:item.cat}</span></span>
+      <span class="item-date">${d.getDate()} ${MONTH_NAMES[d.getMonth()]}</span>
+      <span class="item-amount spend">−${fmt(item.amount)}</span>
+      <button class="item-edit" onclick="openEdit('spend',${item.id})">✎</button>
+      <button class="item-del" onclick="delItem('spend',${item.id})">×</button>
+    </div>`;
+  }).join('');
+}
+
+function renderBreakdown() {
+  const cats = {};
+  state.outgoings.forEach(i=>{ cats[i.cat]=(cats[i.cat]||0)+i.amount; });
+  const total = totalOut();
+  const sorted = Object.entries(cats).sort((a,b)=>b[1]-a[1]);
+  document.getElementById('cat-list').innerHTML = sorted.map(([cat,amt])=>{
+    const pct = total>0?Math.round(amt/total*100):0;
+    return `<div class="cat-row">
+      <div class="item-dot" style="background:${CAT_COLORS[cat]||'#90a4ae'}"></div>
+      <span class="cat-name">${cat.charAt(0).toUpperCase()+cat.slice(1)}</span>
+      <div class="cat-bar-wrap"><div class="cat-bar" style="width:${pct}%;background:${CAT_COLORS[cat]||'#90a4ae'}"></div></div>
+      <span class="cat-amount">${fmt(amt)}</span>
+      <span class="cat-pct">${pct}%</span>
+    </div>`;
+  }).join('');
+}
+
+// ─── PERIOD NAV ───
+function changePeriod(dir) {
+  const next = activePeriodIdx + dir;
+  if(next >= 0 && next < PERIODS.length) {
+    activePeriodIdx = next;
+    renderSpendingTab();
+  }
+}
+
+// ─── TABS ───
+function showTab(t) {
+  activeTab = t;
+  ['outgoings','income','spending','breakdown'].forEach(id=>{
+    document.getElementById('tab-'+id).classList.toggle('hidden', id!==t);
+  });
+  document.querySelectorAll('.tab').forEach((btn,i)=>{
+    btn.classList.toggle('active', ['outgoings','income','spending','breakdown'][i]===t);
+  });
+  if(t==='spending') renderSpendingTab();
+}
+
+// ─── MODAL ───
+function todayStr() {
+  const d = new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+function openModal(type) {
+  modalCtx = {mode:'add', editId:null, type};
+  const isSpend = type==='spend';
+  document.getElementById('modal-title').textContent = type==='out'?'Add outgoing':type==='in'?'Add income':'Log spend';
+  document.getElementById('m-name').value = '';
+  document.getElementById('m-amount').value = '';
+  const catSel = document.getElementById('m-cat');
+  if(isSpend) {
+    catSel.innerHTML = BUDGET_CATS.map(c=>`<option value="${c.key}">${c.emoji} ${c.label}</option>`).join('');
+  } else {
+    catSel.innerHTML = OUT_CATS.map(c=>`<option value="${c}">${c}</option>`).join('');
+  }
+  document.getElementById('m-cat-wrap').style.display = type==='in'?'none':'block';
+  document.getElementById('m-date-wrap').classList.toggle('hidden', !isSpend);
+  if(isSpend) document.getElementById('m-date').value = todayStr();
+  document.getElementById('modal').classList.remove('hidden');
+  setTimeout(()=>document.getElementById('m-name').focus(), 50);
+}
+
+function openEdit(type, id) {
+  const list = type==='out'?state.outgoings:type==='in'?state.income:state.spending;
+  const item = list.find(i=>i.id===id);
+  if(!item) return;
+  modalCtx = {mode:'edit', editId:id, type};
+  const isSpend = type==='spend';
+  document.getElementById('modal-title').textContent = 'Edit item';
+  document.getElementById('m-name').value = item.name;
+  document.getElementById('m-amount').value = item.amount.toFixed(2);
+  const catSel = document.getElementById('m-cat');
+  if(isSpend) {
+    catSel.innerHTML = BUDGET_CATS.map(c=>`<option value="${c.key}">${c.emoji} ${c.label}</option>`).join('');
+  } else {
+    catSel.innerHTML = OUT_CATS.map(c=>`<option value="${c}">${c}</option>`).join('');
+  }
+  document.getElementById('m-cat-wrap').style.display = type==='in'?'none':'block';
+  document.getElementById('m-date-wrap').classList.toggle('hidden', !isSpend);
+  if(type!=='in') catSel.value = item.cat;
+  if(isSpend) document.getElementById('m-date').value = item.date || todayStr();
+  document.getElementById('modal').classList.remove('hidden');
+  setTimeout(()=>document.getElementById('m-name').focus(), 50);
+}
+
+function closeModal() { document.getElementById('modal').classList.add('hidden'); }
+
+function saveItem() {
+  const name = document.getElementById('m-name').value.trim();
+  const amount = parseFloat(document.getElementById('m-amount').value);
+  const cat = document.getElementById('m-cat').value;
+  const nameEl = document.getElementById('m-name');
+  if(!name || isNaN(amount) || amount <= 0) { nameEl.style.borderColor='var(--red)'; return; }
+  nameEl.style.borderColor = '';
+  const isSpend = modalCtx.type === 'spend';
+  const dateVal = isSpend ? (document.getElementById('m-date').value || todayStr()) : null;
+
+  if(modalCtx.mode === 'add') {
+    const list = modalCtx.type==='out'?state.outgoings:modalCtx.type==='in'?state.income:state.spending;
+    const entry = { id: state.nextId++, name, amount, cat: modalCtx.type==='in'?'other':cat };
+    if(isSpend) entry.date = dateVal;
+    list.push(entry);
+  } else {
+    const list = modalCtx.type==='out'?state.outgoings:modalCtx.type==='in'?state.income:state.spending;
+    const item = list.find(i=>i.id===modalCtx.editId);
+    if(item) {
+      item.name = name; item.amount = amount;
+      if(modalCtx.type !== 'in') item.cat = cat;
+      if(isSpend) item.date = dateVal;
+    }
+  }
+  saveState();
+  closeModal();
+  render();
+}
+
+function delItem(type, id) {
+  if(type==='out') state.outgoings = state.outgoings.filter(i=>i.id!==id);
+  else if(type==='in') state.income = state.income.filter(i=>i.id!==id);
+  else state.spending = state.spending.filter(i=>i.id!==id);
+  saveState();
+  render();
+}
+
+document.getElementById('modal').addEventListener('click', e=>{ if(e.target===document.getElementById('modal')) closeModal(); });
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeModal(); if(e.key==='Enter'&&!document.getElementById('modal').classList.contains('hidden')) saveItem(); });
+
+render();
+</script>
+</body>
+</html>
